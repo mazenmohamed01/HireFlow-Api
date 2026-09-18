@@ -1,4 +1,4 @@
-namespace HireFlow.Application.Common;
+namespace HireFlow.Domain.Shared;
 
 /// <summary>
 /// Represents a domain or application error with a machine-readable code.

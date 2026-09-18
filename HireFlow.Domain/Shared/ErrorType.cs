@@ -1,4 +1,4 @@
-namespace HireFlow.Application.Common;
+namespace HireFlow.Domain.Shared;
 
 /// <summary>
 /// Classifies the nature of an error for HTTP status code mapping.

@@ -1,4 +1,5 @@
 using HireFlow.Application.Common;
+using HireFlow.Domain.Shared;
 using HireFlow.Application.DTOs.Jobs;
 using HireFlow.Application.Services.Jobs;
 using HireFlow.Domain.Entities;
@@ -21,13 +22,20 @@ public sealed class JobService(
     {
         // Phase 6 will add: validator, domain factory, ownership, Mapster.
         // For Phase 1: thin placeholder that persists and returns the id.
-        var job = new Job
+        var jobResult = Job.Create(
+            1, // Dummy recruiter ID for stub
+            request.Title,
+            request.Description,
+            request.Location,
+            HireFlow.Domain.Enums.JobType.FullTime,
+            timeProvider.GetUtcNow().UtcDateTime);
+
+        if (jobResult.IsFailure)
         {
-            Title = request.Title,
-            Description = request.Description,
-            Location = request.Location,
-            IsActive = true
-        };
+            return Result.Failure<int>(jobResult.Error!);
+        }
+
+        var job = jobResult.Value;
 
         await jobRepository.InsertAsync(job, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);

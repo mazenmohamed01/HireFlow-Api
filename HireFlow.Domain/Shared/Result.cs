@@ -1,4 +1,4 @@
-namespace HireFlow.Application.Common;
+namespace HireFlow.Domain.Shared;
 
 /// <summary>
 /// Represents the outcome of an operation that may succeed or fail with a typed error.

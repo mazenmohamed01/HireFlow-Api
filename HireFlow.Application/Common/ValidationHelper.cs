@@ -1,4 +1,5 @@
 using FluentValidation;
+using HireFlow.Domain.Shared;
 
 namespace HireFlow.Application.Common;
 

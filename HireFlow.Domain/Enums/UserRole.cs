@@ -1,4 +1,4 @@
-namespace HireFlow.Domain.Entities;
+namespace HireFlow.Domain.Enums;
 
 public enum UserRole
 {

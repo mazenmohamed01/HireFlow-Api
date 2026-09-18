@@ -1,4 +1,4 @@
-namespace HireFlow.Domain.Entities;
+namespace HireFlow.Domain.Enums;
 
 /// <summary>
 /// Replaces JobApplicationStatus. Values stored as string per plan section 3.2.

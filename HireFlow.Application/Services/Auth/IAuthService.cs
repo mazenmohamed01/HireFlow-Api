@@ -1,4 +1,5 @@
 using HireFlow.Application.Common;
+using HireFlow.Domain.Shared;
 using HireFlow.Application.DTOs.Auth;
 
 namespace HireFlow.Application.Services.Auth;

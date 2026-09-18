@@ -1,4 +1,4 @@
-namespace HireFlow.Application.Common;
+namespace HireFlow.Domain.Shared;
 
 /// <summary>
 /// Specialised error for FluentValidation failures. Carries a per-field error dictionary

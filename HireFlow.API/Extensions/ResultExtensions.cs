@@ -1,4 +1,5 @@
 using HireFlow.Application.Common;
+using HireFlow.Domain.Shared;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 

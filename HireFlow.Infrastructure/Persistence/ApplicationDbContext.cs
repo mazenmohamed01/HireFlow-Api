@@ -1,4 +1,5 @@
 using HireFlow.Application.Common;
+using HireFlow.Domain.Shared;
 using HireFlow.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
