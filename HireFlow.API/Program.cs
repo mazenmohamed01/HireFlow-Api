@@ -1,53 +1,87 @@
-
-using JobApplication.Application.Interfaces;
-using JobApplication.Application.Services;
-using JobApplication.Infrastructure.Persistence;
-using JobApplication.Infrastructure.Repositories;
+using HireFlow.API.Middleware;
+using HireFlow.Application.Services.Jobs;
+using HireFlow.Infrastructure.Persistence;
+using HireFlow.Infrastructure.Repositories;
+using Mapster;
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
-using Scalar;
 using Scalar.AspNetCore;
-namespace JobApplication.API
+using System.Reflection;
+
+namespace HireFlow.API;
+
+public class Program
 {
-    public class Program
+    public static void Main(string[] args)
     {
-        public static void Main(string[] args)
-        {
-            var builder = WebApplication.CreateBuilder(args);
+        var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+        // ── Controllers ───────────────────────────────────────────────────
+        builder.Services.AddControllers();
 
-            builder.Services.AddControllers();
-            var connectionString =
+        // ── Database ──────────────────────────────────────────────────────
+        var connectionString =
             builder.Configuration.GetConnectionString("DefaultConnection")
-                ?? throw new InvalidOperationException("Connection string"
-                + "'DefaultConnection' not found.");
+            ?? throw new InvalidOperationException(
+                "Connection string 'DefaultConnection' not found. " +
+                "Add it to User Secrets or environment variables.");
 
-            builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(connectionString));
+        builder.Services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseSqlServer(connectionString));
 
-            builder.Services.AddScoped<JobService>();
-            builder.Services.AddScoped<IJobRepository, JobRepository>();
+        // ApplicationDbContext also implements IUnitOfWork
+        builder.Services.AddScoped<HireFlow.Application.Common.IUnitOfWork>(
+            sp => sp.GetRequiredService<ApplicationDbContext>());
 
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
+        // ── Mapster ───────────────────────────────────────────────────────
+        // Scan Application assembly for IRegister mapping profiles.
+        var mapsterConfig = new TypeAdapterConfig();
+        mapsterConfig.Scan(Assembly.GetAssembly(typeof(IJobService))!);
+        builder.Services.AddSingleton(mapsterConfig);
+        builder.Services.AddScoped<IMapper, ServiceMapper>();
 
-            var app = builder.Build();
+        // ── Repositories / Services ───────────────────────────────────────
+        builder.Services.AddScoped<IJobRepository, JobRepository>();
+        builder.Services.AddScoped<IJobService, JobService>();
 
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.MapOpenApi();
-                app.MapScalarApiReference(); 
-            }
+        // TimeProvider (built-in .NET 8+) — injectable singleton
+        builder.Services.AddSingleton(TimeProvider.System);
 
-            app.UseHttpsRedirection();
+        // ── Global exception handler ──────────────────────────────────────
+        builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+        builder.Services.AddProblemDetails();
 
-            app.UseAuthorization();
+        // ── Authentication (placeholder; wired up in Phase 4) ────────────
+        // builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)…
+        // builder.Services.AddAuthorization(…);
 
+        // ── OpenAPI / Scalar ──────────────────────────────────────────────
+        builder.Services.AddOpenApi();
 
-            app.MapControllers();
+        // ── Health checks ─────────────────────────────────────────────────
+        builder.Services.AddHealthChecks();
 
-            app.Run();
+        // ─────────────────────────────────────────────────────────────────
+        var app = builder.Build();
+
+        // ── Exception handler (must be first) ─────────────────────────────
+        app.UseExceptionHandler();
+
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapOpenApi();
+            app.MapScalarApiReference();
         }
+
+        app.UseHttpsRedirection();
+
+        // Authentication / Authorization middleware stubs (Phase 4 activates these).
+        // app.UseAuthentication();
+        app.UseAuthorization();
+
+        app.MapControllers();
+        app.MapHealthChecks("/health");
+
+        app.Run();
     }
 }

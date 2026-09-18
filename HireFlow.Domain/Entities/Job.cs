@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+namespace HireFlow.Domain.Entities;
 
-namespace JobApplication.Domain.Entities
+public class Job
 {
-    public class Job
-    {
-        public int Id { get; set; }
-        public string Title { get; set; }
-        public string Description  { get; set; }
-        public bool IsActive { get; set; }
-    }
+    public int Id { get; set; }
+    public int RecruiterId { get; set; }
+    public Recruiter Recruiter { get; set; } = null!;
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string? Location { get; set; }
+    public bool IsActive { get; set; } // preserved for migration compatibility; Phase 3 replaces with Status
 }

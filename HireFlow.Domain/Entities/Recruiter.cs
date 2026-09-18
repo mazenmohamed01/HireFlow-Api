@@ -1,10 +1,9 @@
 namespace HireFlow.Domain.Entities;
 
-public class Candidate
+public class Recruiter
 {
     public int Id { get; set; }
     public int UserId { get; set; }
     public User User { get; set; } = null!;
-    public string? CvUrl { get; set; }
-    public string? Phone { get; set; }
+    public string CompanyName { get; set; } = string.Empty;
 }

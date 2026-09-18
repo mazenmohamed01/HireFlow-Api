@@ -1,16 +1,15 @@
-﻿using JobApplication.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using HireFlow.Domain.Entities;
 
-namespace JobApplication.Application.Interfaces
+namespace HireFlow.Application.Services.Jobs;
+
+/// <summary>
+/// Repository abstraction for <see cref="Job"/> aggregate.
+/// SaveChangesAsync is the responsibility of <see cref="Common.IUnitOfWork"/>.
+/// </summary>
+public interface IJobRepository
 {
-    public interface IJobRepository
-    {
-        Task InsertAsync(Job job);
-        void Update(Job job);
-        IQueryable<Job> Get();
-        void Remove(Job job);
-        Task SaveChangesAsync();
-    }
+    Task InsertAsync(Job job, CancellationToken cancellationToken = default);
+    void Update(Job job);
+    IQueryable<Job> Query();
+    void Remove(Job job);
 }
