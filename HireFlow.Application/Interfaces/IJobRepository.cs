@@ -1,6 +1,6 @@
 using HireFlow.Domain.Entities;
 
-namespace HireFlow.Application.Services.Jobs;
+namespace HireFlow.Application.Interfaces;
 
 /// <summary>
 /// Repository abstraction for <see cref="Job"/> aggregate.

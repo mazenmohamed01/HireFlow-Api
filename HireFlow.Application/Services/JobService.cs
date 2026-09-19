@@ -1,4 +1,5 @@
 using HireFlow.Application.Common;
+using HireFlow.Application.Interfaces;
 using HireFlow.Domain.Shared;
 using HireFlow.Application.DTOs.Jobs;
 using HireFlow.Application.Services.Jobs;

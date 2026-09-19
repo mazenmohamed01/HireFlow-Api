@@ -1,4 +1,4 @@
-using HireFlow.Application.Services.Jobs;
+using HireFlow.Application.Interfaces;
 using HireFlow.Domain.Entities;
 using HireFlow.Infrastructure.Persistence;
 

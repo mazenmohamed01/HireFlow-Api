@@ -1,4 +1,7 @@
 using HireFlow.API.Middleware;
+using HireFlow.API.Services;
+using HireFlow.Application.Common;
+using HireFlow.Application.Interfaces;
 using HireFlow.Application.Services.Jobs;
 using HireFlow.Infrastructure.Persistence;
 using HireFlow.Infrastructure.Repositories;
@@ -41,8 +44,18 @@ public class Program
         builder.Services.AddScoped<IMapper, ServiceMapper>();
 
         // ── Repositories / Services ───────────────────────────────────────
+        builder.Services.AddScoped<IUserRepository, UserRepository>();
+        builder.Services.AddScoped<ICandidateRepository, CandidateRepository>();
+        builder.Services.AddScoped<IRecruiterRepository, RecruiterRepository>();
         builder.Services.AddScoped<IJobRepository, JobRepository>();
+        builder.Services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
         builder.Services.AddScoped<IJobService, JobService>();
+
+        // ── Unit of Work ──────────────────────────────────────────────────
+        builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ApplicationDbContext>());
+
+        // ── Identity (Stub for Phase 1-3) ─────────────────────────────────
+        builder.Services.AddScoped<ICurrentUser, DummyCurrentUser>();
 
         // TimeProvider (built-in .NET 8+) — injectable singleton
         builder.Services.AddSingleton(TimeProvider.System);
