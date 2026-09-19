@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace HireFlow.API.Controllers;
 
 /// <summary>
-/// Application management endpoints for both candidates and recruiters.
+/// Application management endpoints for both candidates and recruiters
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
