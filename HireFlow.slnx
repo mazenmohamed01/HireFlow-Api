@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="HireFlow.API/HireFlow.API.csproj" />
+  <Project Path="HireFlow.Application/HireFlow.Application.csproj" />
+  <Project Path="HireFlow.Domain/HireFlow.Domain.csproj" />
+  <Project Path="HireFlow.Infrastructure/HireFlow.Infrastructure.csproj" />
+</Solution>

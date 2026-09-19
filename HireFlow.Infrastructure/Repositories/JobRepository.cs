@@ -1,41 +1,90 @@
-﻿using JobApplication.Application.Interfaces;
-using JobApplication.Domain.Entities;
-using JobApplication.Infrastructure.Persistence;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using HireFlow.Application.Interfaces;
+using HireFlow.Domain.Entities;
+using HireFlow.Domain.Enums;
+using HireFlow.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
-namespace JobApplication.Infrastructure.Repositories
+namespace HireFlow.Infrastructure.Repositories;
+
+/// <summary>
+/// EF Core implementation of <see cref="IJobRepository"/>.
+/// </summary>
+public sealed class JobRepository(ApplicationDbContext context) : IJobRepository
 {
-    public class JobRepository : IJobRepository
+    public async Task InsertAsync(Job job, CancellationToken cancellationToken = default)
+        => await context.Jobs.AddAsync(job, cancellationToken);
+
+    public void Update(Job job)
+        => context.Jobs.Update(job);
+
+    public IQueryable<Job> Query()
+        => context.Jobs.AsQueryable();
+
+    public void Remove(Job job)
+        => context.Jobs.Remove(job);
+
+    public async Task<Job?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+        => await context.Jobs.FirstOrDefaultAsync(j => j.Id == id, cancellationToken);
+
+    public async Task<Job?> GetByIdWithRecruiterAsync(int id, CancellationToken cancellationToken = default)
+        => await context.Jobs
+            .Include(j => j.Recruiter)
+            .FirstOrDefaultAsync(j => j.Id == id, cancellationToken);
+
+    public async Task<(List<Job> Items, int TotalCount)> GetPagedOpenJobsAsync(
+        string? search, string? jobType, string? location,
+        int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        private readonly ApplicationDbContext _context;
+        var query = context.Jobs
+            .Include(j => j.Recruiter)
+            .Where(j => j.Status == JobStatus.Open);
 
-        public JobRepository(ApplicationDbContext context)
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            _context = context;
+            query = query.Where(j => j.Title.Contains(search) || j.Description.Contains(search));
         }
 
-        public async Task InsertAsync(Job job )
+        if (!string.IsNullOrWhiteSpace(jobType) && Enum.TryParse<JobType>(jobType, true, out var parsedType))
         {
-            await _context.Jobs.AddAsync(job);
+            query = query.Where(j => j.JobType == parsedType);
         }
-        public void Update(Job job)
+
+        if (!string.IsNullOrWhiteSpace(location))
         {
-            _context.Jobs.Update(job);
+            query = query.Where(j => j.Location != null && j.Location.Contains(location));
         }
-        public IQueryable<Job> Get()
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderByDescending(j => j.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task<(List<(Job Job, int ApplicationsCount)> Items, int TotalCount)> GetPagedMyJobsAsync(
+        int recruiterId, string? status,
+        int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var query = context.Jobs.Where(j => j.RecruiterId == recruiterId);
+
+        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<JobStatus>(status, true, out var parsedStatus))
         {
-            var jobs = _context.Jobs.AsQueryable();
-            return jobs; 
+            query = query.Where(j => j.Status == parsedStatus);
         }
-        public void Remove(Job job)
-        {
-            _context.Jobs.Remove(job);
-        }
-        public async Task SaveChangesAsync()
-        {
-            await _context.SaveChangesAsync();
-        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderByDescending(j => j.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(j => new { Job = j, AppsCount = context.JobApplications.Count(a => a.JobId == j.Id) })
+            .ToListAsync(cancellationToken);
+
+        return (items.Select(x => (x.Job, x.AppsCount)).ToList(), totalCount);
     }
 }
