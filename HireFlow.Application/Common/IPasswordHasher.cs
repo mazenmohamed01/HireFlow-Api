@@ -2,7 +2,7 @@ namespace HireFlow.Application.Common;
 
 /// <summary>
 /// Application abstraction for password hashing.
-/// Implemented in Infrastructure using <see cref="Microsoft.AspNetCore.Identity.PasswordHasher{TUser}"/>
+/// Implemented in Infrastructure using <c>Microsoft.AspNetCore.Identity.PasswordHasher</c>
 /// (from <c>Microsoft.Extensions.Identity.Core</c>), which uses PBKDF2-SHA512.
 /// </summary>
 public interface IPasswordHasher

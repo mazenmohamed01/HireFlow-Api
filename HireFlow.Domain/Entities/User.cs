@@ -27,4 +27,9 @@ public class User
             CreatedAt = now
         };
     }
+
+    public void UpdateFullName(string fullName)
+    {
+        FullName = fullName;
+    }
 }

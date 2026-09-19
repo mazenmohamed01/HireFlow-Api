@@ -8,4 +8,13 @@ public interface IJobApplicationRepository
     void Update(JobApplication application);
     IQueryable<JobApplication> Query();
     void Remove(JobApplication application);
+
+    Task<JobApplication?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<JobApplication?> GetByIdWithJobAsync(int id, CancellationToken cancellationToken = default);
+    
+    Task<(List<JobApplication> Items, int TotalCount)> GetCandidateApplicationsAsync(
+        int candidateId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
+        
+    Task<(List<JobApplication> Items, int TotalCount)> GetJobApplicationsAsync(
+        int jobId, string? status, int page, int pageSize, CancellationToken cancellationToken = default);
 }

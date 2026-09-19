@@ -38,10 +38,19 @@ public sealed record RecruiterApplicationItemDto(
     string Status,
     DateTime AppliedAt);
 
+/// <summary>
+/// Payload for submitting a new job application.
+/// </summary>
+/// <param name="CvUrl">A valid URL pointing to the candidate's CV document.</param>
+/// <param name="CoverLetter">Optional cover letter or pitch.</param>
 public sealed record ApplyRequest(
     string? CvUrl,
     string? CoverLetter);
 
+/// <summary>
+/// Payload for changing an application's status.
+/// </summary>
+/// <param name="Status">Accepted or Rejected.</param>
 public sealed record ChangeStatusRequest(string Status);
 
 public sealed record ApplicationsFilter(

@@ -2,14 +2,24 @@ using HireFlow.API.Middleware;
 using HireFlow.API.Services;
 using HireFlow.Application.Common;
 using HireFlow.Application.Interfaces;
+using HireFlow.Application.Services.Auth;
 using HireFlow.Application.Services.Jobs;
+using HireFlow.Application.Services.Profiles;
+using HireFlow.Application.Services.Applications;
 using HireFlow.Infrastructure.Persistence;
+using HireFlow.Infrastructure.Security;
 using HireFlow.Infrastructure.Repositories;
 using Mapster;
 using MapsterMapper;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using Scalar.AspNetCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using Serilog;
 using System.Reflection;
+using System.Text;
+using System.Threading.RateLimiting;
 
 namespace HireFlow.API;
 
@@ -19,7 +29,11 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // ── Controllers ───────────────────────────────────────────────────
+        // ── Serilog ───────────────────────────────────────────────────────────
+        builder.Host.UseSerilog((context, loggerConfig) => 
+            loggerConfig.ReadFrom.Configuration(context.Configuration));
+
+        // ── Controllers ───────────────────────────────────────────────────────
         builder.Services.AddControllers();
 
         // ── Database ──────────────────────────────────────────────────────
@@ -50,12 +64,18 @@ public class Program
         builder.Services.AddScoped<IJobRepository, JobRepository>();
         builder.Services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
         builder.Services.AddScoped<IJobService, JobService>();
+        builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<IProfileService, ProfileService>();
+        builder.Services.AddScoped<IApplicationService, ApplicationService>();
+        builder.Services.AddSingleton<IPasswordHasher, PasswordHasherService>();
+        builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
         // ── Unit of Work ──────────────────────────────────────────────────
         builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
-        // ── Identity (Stub for Phase 1-3) ─────────────────────────────────
-        builder.Services.AddScoped<ICurrentUser, DummyCurrentUser>();
+        // ── Identity ──────────────────────────────────────────────────────
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
         // TimeProvider (built-in .NET 8+) — injectable singleton
         builder.Services.AddSingleton(TimeProvider.System);
@@ -64,14 +84,108 @@ public class Program
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
         builder.Services.AddProblemDetails();
 
-        // ── Authentication (placeholder; wired up in Phase 4) ────────────
-        // builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)…
-        // builder.Services.AddAuthorization(…);
+        // ── Authentication & Authorization ──────────────────────────────────
+        var jwtKey = builder.Configuration["Jwt:Key"] ?? "super-secret-key-that-must-be-very-long!";
+        var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "HireFlowAPI";
+        var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "HireFlowClients";
 
-        // ── OpenAPI / Scalar ──────────────────────────────────────────────
-        builder.Services.AddOpenApi();
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtIssuer,
+                    ValidAudience = jwtAudience,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                };
+            });
 
-        // ── Health checks ─────────────────────────────────────────────────
+        builder.Services.AddAuthorization();
+
+        // ── Rate Limiting ──────────────────────────────────────────────────────────
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.AddFixedWindowLimiter("AuthPolicy", opt =>
+            {
+                opt.Window = TimeSpan.FromMinutes(1);
+                opt.PermitLimit = 5;
+                opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opt.QueueLimit = 2;
+            });
+        });
+
+        // ── CORS ──────────────────────────────────────────────────────────────────
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("DefaultCorsPolicy", policy =>
+            {
+                var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+                if (allowedOrigins.Length > 0)
+                {
+                    policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader();
+                }
+                else
+                {
+                    policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+                }
+            });
+        });
+
+        // ── Swagger ───────────────────────────────────────────────────────────────
+        builder.Services.AddSwaggerGen(c =>
+        {
+            c.SwaggerDoc("v1", new OpenApiInfo 
+            { 
+                Title = "HireFlow API", 
+                Version = "v1",
+                Description = "A clean-architecture recruitment platform API supporting Candidates and Recruiters.",
+                Contact = new OpenApiContact
+                {
+                    Name = "HireFlow Support",
+                    Email = "mazenmohamedsalah77@gmail.com"
+                }
+            });
+            
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Description = "Enter your JWT token directly.\r\n\r\nExample: eyJhbGciOiJIUzI1NiIsInR5...",
+                Name = "Authorization",
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT"
+            });
+            
+            c.AddSecurityRequirement(new OpenApiSecurityRequirement
+            {
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "Bearer"
+                        }
+                    },
+                    Array.Empty<string>()
+                }
+            });
+
+            // Include XML Comments
+            var apiXmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+            var apiXmlPath = Path.Combine(AppContext.BaseDirectory, apiXmlFile);
+            if (File.Exists(apiXmlPath)) c.IncludeXmlComments(apiXmlPath);
+
+            var applicationXmlFile = "HireFlow.Application.xml";
+            var applicationXmlPath = Path.Combine(AppContext.BaseDirectory, applicationXmlFile);
+            if (File.Exists(applicationXmlPath)) c.IncludeXmlComments(applicationXmlPath);
+        });
+
+        // ── Health checks ──────────────────────────────────────────────────────────
         builder.Services.AddHealthChecks();
 
         // ─────────────────────────────────────────────────────────────────
@@ -82,14 +196,22 @@ public class Program
 
         if (app.Environment.IsDevelopment())
         {
-            app.MapOpenApi();
-            app.MapScalarApiReference();
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "HireFlow API v1");
+                c.DocumentTitle = "HireFlow API Documentation";
+                c.EnableDeepLinking();
+                c.DisplayRequestDuration();
+            });
         }
+
+        app.UseCors("DefaultCorsPolicy");
+        app.UseRateLimiter();
 
         app.UseHttpsRedirection();
 
-        // Authentication / Authorization middleware stubs (Phase 4 activates these).
-        // app.UseAuthentication();
+        app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapControllers();

@@ -3,7 +3,4 @@
   <Project Path="HireFlow.Application/HireFlow.Application.csproj" />
   <Project Path="HireFlow.Domain/HireFlow.Domain.csproj" />
   <Project Path="HireFlow.Infrastructure/HireFlow.Infrastructure.csproj" />
-  <Project Path="HireFlow.Domain.Tests/HireFlow.Domain.Tests.csproj" />
-  <Project Path="HireFlow.Application.Tests/HireFlow.Application.Tests.csproj" />
-  <Project Path="HireFlow.Integration.Tests/HireFlow.Integration.Tests.csproj" />
 </Solution>

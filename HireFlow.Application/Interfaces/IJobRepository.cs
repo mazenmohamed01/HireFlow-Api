@@ -12,4 +12,15 @@ public interface IJobRepository
     void Update(Job job);
     IQueryable<Job> Query();
     void Remove(Job job);
+    
+    Task<Job?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    Task<Job?> GetByIdWithRecruiterAsync(int id, CancellationToken cancellationToken = default);
+    
+    Task<(List<Job> Items, int TotalCount)> GetPagedOpenJobsAsync(
+        string? search, string? jobType, string? location, 
+        int page, int pageSize, CancellationToken cancellationToken = default);
+        
+    Task<(List<(Job Job, int ApplicationsCount)> Items, int TotalCount)> GetPagedMyJobsAsync(
+        int recruiterId, string? status, 
+        int page, int pageSize, CancellationToken cancellationToken = default);
 }

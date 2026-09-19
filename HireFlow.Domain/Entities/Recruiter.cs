@@ -22,4 +22,9 @@ public class Recruiter
     {
         CompanyName = companyName;
     }
+
+    public void UpdateCompanyName(string companyName)
+    {
+        CompanyName = companyName;
+    }
 }

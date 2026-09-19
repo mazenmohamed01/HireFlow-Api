@@ -35,12 +35,26 @@ public sealed record RecruiterJobItemDto(
     DateTime? ClosedAt,
     int ApplicationsCount);
 
+/// <summary>
+/// Payload for creating a new job posting.
+/// </summary>
+/// <param name="Title">The job title. Example: Senior Software Engineer</param>
+/// <param name="Description">Detailed job description.</param>
+/// <param name="Location">Optional location. Example: Remote</param>
+/// <param name="JobType">FullTime, PartTime, or Contract.</param>
 public sealed record CreateJobRequest(
     string Title,
     string Description,
     string? Location,
     string JobType);
 
+/// <summary>
+/// Payload for updating an existing job posting.
+/// </summary>
+/// <param name="Title">The updated job title.</param>
+/// <param name="Description">The updated detailed description.</param>
+/// <param name="Location">The updated location.</param>
+/// <param name="JobType">The updated job type.</param>
 public sealed record UpdateJobRequest(
     string Title,
     string Description,

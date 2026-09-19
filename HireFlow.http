@@ -1,0 +1,102 @@
+@HireFlow_HostAddress = https://localhost:5001
+@CandidateEmail = candidate@example.com
+@CandidatePassword = Password123!
+@RecruiterEmail = recruiter@example.com
+@RecruiterPassword = Password123!
+
+### 1. Register Recruiter
+POST {{HireFlow_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{RecruiterEmail}}",
+  "password": "{{RecruiterPassword}}",
+  "role": "Recruiter",
+  "fullName": "Alice Recruiter",
+  "companyName": "Tech Corp"
+}
+
+### 2. Login Recruiter (Get Token)
+# @name loginRecruiter
+POST {{HireFlow_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{RecruiterEmail}}",
+  "password": "{{RecruiterPassword}}"
+}
+
+@RecruiterToken = {{loginRecruiter.response.body.token}}
+
+### 3. Create Job
+# @name createJob
+POST {{HireFlow_HostAddress}}/api/jobs
+Authorization: Bearer {{RecruiterToken}}
+Content-Type: application/json
+
+{
+  "title": "Senior .NET Engineer",
+  "description": "We are looking for an experienced .NET developer.",
+  "location": "Remote",
+  "jobType": "FullTime"
+}
+
+@JobId = {{createJob.response.body}}
+
+### 4. Register Candidate
+POST {{HireFlow_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{CandidateEmail}}",
+  "password": "{{CandidatePassword}}",
+  "role": "Candidate",
+  "fullName": "Bob Candidate",
+  "phone": "+123456789"
+}
+
+### 5. Login Candidate (Get Token)
+# @name loginCandidate
+POST {{HireFlow_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{CandidateEmail}}",
+  "password": "{{CandidatePassword}}"
+}
+
+@CandidateToken = {{loginCandidate.response.body.token}}
+
+### 6. Get Open Jobs
+GET {{HireFlow_HostAddress}}/api/jobs
+Authorization: Bearer {{CandidateToken}}
+
+### 7. Apply to Job
+# @name applyToJob
+POST {{HireFlow_HostAddress}}/api/jobs/{{JobId}}/applications
+Authorization: Bearer {{CandidateToken}}
+Content-Type: application/json
+
+{
+  "cvUrl": "https://example.com/cv.pdf",
+  "coverLetter": "I would love this job."
+}
+
+@ApplicationId = {{applyToJob.response.body}}
+
+### 8. Get Recruiter Job Applications
+GET {{HireFlow_HostAddress}}/api/jobs/{{JobId}}/applications
+Authorization: Bearer {{RecruiterToken}}
+
+### 9. Change Application Status
+PATCH {{HireFlow_HostAddress}}/api/applications/{{ApplicationId}}/status
+Authorization: Bearer {{RecruiterToken}}
+Content-Type: application/json
+
+{
+  "status": "UnderReview"
+}
+
+### 10. Get Candidate Profile (Me)
+GET {{HireFlow_HostAddress}}/api/candidates/me
+Authorization: Bearer {{CandidateToken}}
