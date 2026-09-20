@@ -1,10 +1,12 @@
 using HireFlow.API.Extensions;
+using HireFlow.Application.Common;
 using HireFlow.Application.DTOs.Jobs;
 using HireFlow.Application.DTOs.Profiles;
-using HireFlow.Application.Services.Jobs;
-using HireFlow.Application.Services.Profiles;
-using HireFlow.Application.Common;
+using HireFlow.Application.Features.Jobs.Queries.GetMyJobs;
+using HireFlow.Application.Features.Profiles.Commands.UpdateRecruiterProfile;
+using HireFlow.Application.Features.Profiles.Queries.GetRecruiterProfile;
 using HireFlow.Domain.Shared;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,7 +19,7 @@ namespace HireFlow.API.Controllers;
 [Route("api/[controller]")]
 [Authorize(Roles = "Recruiter")]
 [Tags("Recruiters")]
-public class RecruitersController(IProfileService profileService, IJobService jobService) : ControllerBase
+public class RecruitersController(IMediator mediator) : ControllerBase
 {
     /// <summary>
     /// Gets the current recruiter's profile.
@@ -29,7 +31,7 @@ public class RecruitersController(IProfileService profileService, IJobService jo
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMe(CancellationToken cancellationToken)
     {
-        var result = await profileService.GetRecruiterProfileAsync(cancellationToken);
+        var result = await mediator.Send(new GetRecruiterProfileQuery(), cancellationToken);
         return result.ToActionResult();
     }
 
@@ -45,7 +47,9 @@ public class RecruitersController(IProfileService profileService, IJobService jo
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdateMe(UpdateRecruiterProfileRequest request, CancellationToken cancellationToken)
     {
-        var result = await profileService.UpdateRecruiterProfileAsync(request, cancellationToken);
+        var result = await mediator.Send(
+            new UpdateRecruiterProfileCommand(request.FullName, request.CompanyName),
+            cancellationToken);
         return result.ToActionResult();
     }
 
@@ -61,7 +65,7 @@ public class RecruitersController(IProfileService profileService, IJobService jo
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyJobs([FromQuery] MyJobsFilter filter, CancellationToken cancellationToken)
     {
-        var result = await jobService.GetMyJobsAsync(filter, cancellationToken);
+        var result = await mediator.Send(new GetMyJobsQuery(filter.Status, filter.Pagination), cancellationToken);
         return result.ToActionResult();
     }
 }
