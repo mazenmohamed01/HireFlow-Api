@@ -1,14 +1,14 @@
 using HireFlow.API.Middleware;
 using HireFlow.API.Services;
 using HireFlow.Application.Common;
+using HireFlow.Application.Common.Behaviors;
 using HireFlow.Application.Interfaces;
-using HireFlow.Application.Services.Auth;
-using HireFlow.Application.Services.Jobs;
-using HireFlow.Application.Services.Profiles;
-using HireFlow.Application.Services.Applications;
 using HireFlow.Infrastructure.Persistence;
 using HireFlow.Infrastructure.Security;
 using HireFlow.Infrastructure.Repositories;
+using FluentValidation;
+using MediatR;
+
 using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -53,7 +53,7 @@ public class Program
         // ── Mapster ───────────────────────────────────────────────────────
         // Scan Application assembly for IRegister mapping profiles.
         var mapsterConfig = new TypeAdapterConfig();
-        mapsterConfig.Scan(Assembly.GetAssembly(typeof(IJobService))!);
+        mapsterConfig.Scan(Assembly.GetAssembly(typeof(ICurrentUser))!);
         builder.Services.AddSingleton(mapsterConfig);
         builder.Services.AddScoped<IMapper, ServiceMapper>();
 
@@ -63,12 +63,21 @@ public class Program
         builder.Services.AddScoped<IRecruiterRepository, RecruiterRepository>();
         builder.Services.AddScoped<IJobRepository, JobRepository>();
         builder.Services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
-        builder.Services.AddScoped<IJobService, JobService>();
-        builder.Services.AddScoped<IAuthService, AuthService>();
-        builder.Services.AddScoped<IProfileService, ProfileService>();
-        builder.Services.AddScoped<IApplicationService, ApplicationService>();
         builder.Services.AddSingleton<IPasswordHasher, PasswordHasherService>();
         builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+
+        // ── MediatR (CQRS) ────────────────────────────────────────────────
+        builder.Services.AddMediatR(cfg =>
+        {
+            cfg.RegisterServicesFromAssembly(Assembly.GetAssembly(typeof(ICurrentUser))!);
+            cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
+            cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+        });
+
+        // ── FluentValidation (all validators in Application assembly) ─────
+        builder.Services.AddValidatorsFromAssembly(
+            Assembly.GetAssembly(typeof(ICurrentUser)),
+            includeInternalTypes: true);
 
         // ── Unit of Work ──────────────────────────────────────────────────
         builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ApplicationDbContext>());

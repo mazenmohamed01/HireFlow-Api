@@ -1,10 +1,17 @@
 using HireFlow.API.Extensions;
-using HireFlow.Application.DTOs.Jobs;
-using HireFlow.Application.DTOs.Applications;
-using HireFlow.Application.Services.Jobs;
-using HireFlow.Application.Services.Applications;
 using HireFlow.Application.Common;
+using HireFlow.Application.DTOs.Applications;
+using HireFlow.Application.DTOs.Jobs;
+using HireFlow.Application.Features.Applications.Commands.Apply;
+using HireFlow.Application.Features.Applications.Queries.GetJobApplications;
+using HireFlow.Application.Features.Jobs.Commands.CloseJob;
+using HireFlow.Application.Features.Jobs.Commands.CreateJob;
+using HireFlow.Application.Features.Jobs.Commands.ReopenJob;
+using HireFlow.Application.Features.Jobs.Commands.UpdateJob;
+using HireFlow.Application.Features.Jobs.Queries.GetJobById;
+using HireFlow.Application.Features.Jobs.Queries.GetOpenJobs;
 using HireFlow.Domain.Shared;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,7 +23,7 @@ namespace HireFlow.API.Controllers;
 [Route("api/jobs")]
 [ApiController]
 [Tags("Jobs")]
-public sealed class JobsController(IJobService jobService, IApplicationService applicationService) : ControllerBase
+public sealed class JobsController(IMediator mediator) : ControllerBase
 {
     /// <summary>Creates a new job posting. Recruiter only.</summary>
     /// <response code="201">Job created. Returns the new job id.</response>
@@ -27,16 +34,15 @@ public sealed class JobsController(IJobService jobService, IApplicationService a
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Create(
-        [FromBody] CreateJobRequest request,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> Create([FromBody] CreateJobRequest request, CancellationToken cancellationToken)
     {
-        var result = await jobService.CreateAsync(request, cancellationToken);
+        var result = await mediator.Send(
+            new CreateJobCommand(request.Title, request.Description, request.Location, request.JobType),
+            cancellationToken);
 
         if (result.IsFailure)
             return result.ToActionResult();
 
-        // Returns 201 with the new id; Location header added in Phase 6.
         return StatusCode(StatusCodes.Status201Created, result.Value);
     }
 
@@ -51,7 +57,9 @@ public sealed class JobsController(IJobService jobService, IApplicationService a
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetOpenJobs([FromQuery] JobsFilter filter, CancellationToken cancellationToken)
     {
-        var result = await jobService.GetOpenJobsAsync(filter, cancellationToken);
+        var result = await mediator.Send(
+            new GetOpenJobsQuery(filter.Search, filter.JobType, filter.Location, filter.Pagination),
+            cancellationToken);
         return result.ToActionResult();
     }
 
@@ -66,7 +74,7 @@ public sealed class JobsController(IJobService jobService, IApplicationService a
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
-        var result = await jobService.GetByIdAsync(id, cancellationToken);
+        var result = await mediator.Send(new GetJobByIdQuery(id), cancellationToken);
         return result.ToActionResult();
     }
 
@@ -85,7 +93,9 @@ public sealed class JobsController(IJobService jobService, IApplicationService a
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateJobRequest request, CancellationToken cancellationToken)
     {
-        var result = await jobService.UpdateAsync(id, request, cancellationToken);
+        var result = await mediator.Send(
+            new UpdateJobCommand(id, request.Title, request.Description, request.Location, request.JobType),
+            cancellationToken);
         return result.ToActionResult();
     }
 
@@ -104,7 +114,7 @@ public sealed class JobsController(IJobService jobService, IApplicationService a
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Close(int id, CancellationToken cancellationToken)
     {
-        var result = await jobService.CloseAsync(id, cancellationToken);
+        var result = await mediator.Send(new CloseJobCommand(id), cancellationToken);
         return result.ToActionResult();
     }
 
@@ -123,7 +133,7 @@ public sealed class JobsController(IJobService jobService, IApplicationService a
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Reopen(int id, CancellationToken cancellationToken)
     {
-        var result = await jobService.ReopenAsync(id, cancellationToken);
+        var result = await mediator.Send(new ReopenJobCommand(id), cancellationToken);
         return result.ToActionResult();
     }
 
@@ -144,11 +154,11 @@ public sealed class JobsController(IJobService jobService, IApplicationService a
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Apply(int id, [FromBody] ApplyRequest request, CancellationToken cancellationToken)
     {
-        var result = await applicationService.ApplyAsync(id, request, cancellationToken);
-        
+        var result = await mediator.Send(new ApplyCommand(id, request.CvUrl, request.CoverLetter), cancellationToken);
+
         if (result.IsFailure)
             return result.ToActionResult();
-            
+
         return StatusCode(StatusCodes.Status201Created, result.Value);
     }
 
@@ -165,7 +175,9 @@ public sealed class JobsController(IJobService jobService, IApplicationService a
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetJobApplications(int id, [FromQuery] ApplicationsFilter filter, CancellationToken cancellationToken)
     {
-        var result = await applicationService.GetJobApplicationsAsync(id, filter, cancellationToken);
+        var result = await mediator.Send(
+            new GetJobApplicationsQuery(id, filter.Status, filter.Pagination),
+            cancellationToken);
         return result.ToActionResult();
     }
 }

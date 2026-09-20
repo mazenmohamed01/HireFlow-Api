@@ -1,6 +1,9 @@
 using HireFlow.API.Extensions;
 using HireFlow.Application.DTOs.Auth;
-using HireFlow.Application.Services.Auth;
+using HireFlow.Application.Features.Auth.Commands.Register;
+using HireFlow.Application.Features.Auth.Queries.GetCurrentUser;
+using HireFlow.Application.Features.Auth.Queries.Login;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -14,7 +17,7 @@ namespace HireFlow.API.Controllers;
 [Route("api/[controller]")]
 [EnableRateLimiting("AuthPolicy")]
 [Tags("Authentication")]
-public class AuthController(IAuthService authService) : ControllerBase
+public class AuthController(IMediator mediator) : ControllerBase
 {
     /// <summary>
     /// Registers a new user.
@@ -28,7 +31,9 @@ public class AuthController(IAuthService authService) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
-        var result = await authService.RegisterAsync(request, cancellationToken);
+        var result = await mediator.Send(
+            new RegisterCommand(request.FullName, request.Email, request.Password, request.Role, request.CompanyName),
+            cancellationToken);
         return result.ToCreatedActionResult("GetMe", new { }, this);
     }
 
@@ -44,7 +49,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken cancellationToken)
     {
-        var result = await authService.LoginAsync(request, cancellationToken);
+        var result = await mediator.Send(new LoginQuery(request.Email, request.Password), cancellationToken);
         return result.ToActionResult();
     }
 
@@ -59,7 +64,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Me(CancellationToken cancellationToken)
     {
-        var result = await authService.GetCurrentUserAsync(cancellationToken);
+        var result = await mediator.Send(new GetCurrentUserQuery(), cancellationToken);
         return result.ToActionResult();
     }
 }

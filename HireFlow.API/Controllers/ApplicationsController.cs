@@ -1,18 +1,21 @@
 using HireFlow.API.Extensions;
 using HireFlow.Application.DTOs.Applications;
-using HireFlow.Application.Services.Applications;
+using HireFlow.Application.Features.Applications.Commands.CancelApplication;
+using HireFlow.Application.Features.Applications.Commands.ChangeApplicationStatus;
+using HireFlow.Application.Features.Applications.Queries.GetApplicationById;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HireFlow.API.Controllers;
 
 /// <summary>
-/// Application management endpoints for both candidates and recruiters
+/// Application management endpoints for both candidates and recruiters.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Tags("Applications")]
-public class ApplicationsController(IApplicationService applicationService) : ControllerBase
+public class ApplicationsController(IMediator mediator) : ControllerBase
 {
     /// <summary>
     /// Gets the details of a specific job application.
@@ -27,7 +30,7 @@ public class ApplicationsController(IApplicationService applicationService) : Co
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetApplication(int id, CancellationToken cancellationToken)
     {
-        var result = await applicationService.GetByIdAsync(id, cancellationToken);
+        var result = await mediator.Send(new GetApplicationByIdQuery(id), cancellationToken);
         return result.ToActionResult();
     }
 
@@ -48,11 +51,11 @@ public class ApplicationsController(IApplicationService applicationService) : Co
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CancelApplication(int id, CancellationToken cancellationToken)
     {
-        var result = await applicationService.CancelAsync(id, cancellationToken);
-        
+        var result = await mediator.Send(new CancelApplicationCommand(id), cancellationToken);
+
         if (result.IsFailure)
             return result.ToActionResult();
-            
+
         return NoContent();
     }
 
@@ -73,7 +76,9 @@ public class ApplicationsController(IApplicationService applicationService) : Co
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ChangeStatus(int id, [FromBody] ChangeStatusRequest request, CancellationToken cancellationToken)
     {
-        var result = await applicationService.ChangeStatusAsync(id, request, cancellationToken);
+        var result = await mediator.Send(
+            new ChangeApplicationStatusCommand(id, request.Status),
+            cancellationToken);
         return result.ToActionResult();
     }
 }

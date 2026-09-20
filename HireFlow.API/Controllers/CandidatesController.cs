@@ -1,10 +1,12 @@
 using HireFlow.API.Extensions;
-using HireFlow.Application.DTOs.Profiles;
-using HireFlow.Application.DTOs.Applications;
-using HireFlow.Application.Services.Profiles;
-using HireFlow.Application.Services.Applications;
 using HireFlow.Application.Common;
+using HireFlow.Application.DTOs.Applications;
+using HireFlow.Application.DTOs.Profiles;
+using HireFlow.Application.Features.Applications.Queries.GetMyApplications;
+using HireFlow.Application.Features.Profiles.Commands.UpdateCandidateProfile;
+using HireFlow.Application.Features.Profiles.Queries.GetCandidateProfile;
 using HireFlow.Domain.Shared;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,7 +19,7 @@ namespace HireFlow.API.Controllers;
 [Route("api/[controller]")]
 [Authorize(Roles = "Candidate")]
 [Tags("Candidates")]
-public class CandidatesController(IProfileService profileService, IApplicationService applicationService) : ControllerBase
+public class CandidatesController(IMediator mediator) : ControllerBase
 {
     /// <summary>
     /// Gets the current candidate's profile.
@@ -29,7 +31,7 @@ public class CandidatesController(IProfileService profileService, IApplicationSe
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMe(CancellationToken cancellationToken)
     {
-        var result = await profileService.GetCandidateProfileAsync(cancellationToken);
+        var result = await mediator.Send(new GetCandidateProfileQuery(), cancellationToken);
         return result.ToActionResult();
     }
 
@@ -45,7 +47,9 @@ public class CandidatesController(IProfileService profileService, IApplicationSe
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdateMe(UpdateCandidateProfileRequest request, CancellationToken cancellationToken)
     {
-        var result = await profileService.UpdateCandidateProfileAsync(request, cancellationToken);
+        var result = await mediator.Send(
+            new UpdateCandidateProfileCommand(request.FullName, request.Phone, request.CvUrl),
+            cancellationToken);
         return result.ToActionResult();
     }
 
@@ -61,7 +65,9 @@ public class CandidatesController(IProfileService profileService, IApplicationSe
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyApplications([FromQuery] ApplicationsFilter filter, CancellationToken cancellationToken)
     {
-        var result = await applicationService.GetMyApplicationsAsync(filter, cancellationToken);
+        var result = await mediator.Send(
+            new GetMyApplicationsQuery(filter.Status, filter.Pagination),
+            cancellationToken);
         return result.ToActionResult();
     }
 }
