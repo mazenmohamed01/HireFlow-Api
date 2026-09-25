@@ -8,6 +8,7 @@ using HireFlow.Infrastructure.Security;
 using HireFlow.Infrastructure.Repositories;
 using FluentValidation;
 using MediatR;
+using Hangfire;
 
 using Mapster;
 using MapsterMapper;
@@ -197,6 +198,21 @@ public class Program
         // ── Health checks ──────────────────────────────────────────────────────────
         builder.Services.AddHealthChecks();
 
+        // ── Hangfire ───────────────────────────────────────────────────────────────
+        var hangfireConnectionString = builder.Configuration.GetConnectionString("HangfireConnection") ?? connectionString;
+        builder.Services.AddHangfire(configuration => configuration
+            .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UseSqlServerStorage(hangfireConnectionString));
+
+        builder.Services.AddHangfireServer(options =>
+        {
+            options.WorkerCount = builder.Configuration.GetValue<int>("Hangfire:WorkerCount", 20);
+        });
+        builder.Services.AddTransient<JobBackgroundService>();
+        builder.Services.AddHostedService<HangfireJobScheduler>();
+
         // ─────────────────────────────────────────────────────────────────
         var app = builder.Build();
 
@@ -217,6 +233,9 @@ public class Program
 
         app.UseCors("DefaultCorsPolicy");
         app.UseRateLimiter();
+        
+        var dashboardPath = app.Configuration.GetValue<string>("Hangfire:DashboardPath") ?? "/hangfire";
+        app.UseHangfireDashboard(dashboardPath);
 
         app.UseHttpsRedirection();
 
