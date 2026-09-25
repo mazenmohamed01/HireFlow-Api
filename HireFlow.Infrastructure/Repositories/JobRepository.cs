@@ -87,4 +87,12 @@ public sealed class JobRepository(ApplicationDbContext context) : IJobRepository
 
         return (items.Select(x => (x.Job, x.AppsCount)).ToList(), totalCount);
     }
+
+    public async Task<List<Job>> GetExpiredOpenJobsAsync(int daysOld, CancellationToken cancellationToken = default)
+    {
+        var thresholdDate = DateTime.UtcNow.AddDays(-daysOld);
+        return await context.Jobs
+            .Where(j => j.Status == JobStatus.Open && j.CreatedAt <= thresholdDate)
+            .ToListAsync(cancellationToken);
+    }
 }

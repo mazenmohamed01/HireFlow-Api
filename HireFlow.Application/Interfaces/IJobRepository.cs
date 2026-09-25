@@ -23,4 +23,6 @@ public interface IJobRepository
     Task<(List<(Job Job, int ApplicationsCount)> Items, int TotalCount)> GetPagedMyJobsAsync(
         int recruiterId, string? status, 
         int page, int pageSize, CancellationToken cancellationToken = default);
+
+    Task<List<Job>> GetExpiredOpenJobsAsync(int daysOld, CancellationToken cancellationToken = default);
 }
